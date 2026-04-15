@@ -11,9 +11,6 @@ internal/ebpf/monitor_bpf*.go
 internal/ebpf/monitor_bpf*.o
 *.o
  
-# vmlinux.h is large but SHOULD be committed — remove this line if you prefer not to
-# bpf/headers/vmlinux.h
- 
 # Docker / Lab artifacts
 results_*.csv
 *.log

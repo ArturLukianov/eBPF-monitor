@@ -16,21 +16,16 @@ import (
 
 	// It is possible I need to use moby instead - https://github.com/moby/moby/discussions/50472
 
+	"github.com/ArturLukianov/eBPF-monitor/internal/core"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 )
 
-type ContainerInfo struct {
-	ID    string
-	Name  string
-	Image string
-}
-
 type Resolver struct {
 	mu     sync.RWMutex
-	cache  map[uint64]*ContainerInfo // cgroup_id -> ContainerInfo
+	cache  map[uint64]*core.ContainerInfo // cgroup_id -> ContainerInfo
 	docker *client.Client
 }
 
@@ -41,7 +36,7 @@ func New() (*Resolver, error) {
 	}
 
 	r := &Resolver{
-		cache:  make(map[uint64]*ContainerInfo),
+		cache:  make(map[uint64]*core.ContainerInfo),
 		docker: client,
 	}
 
@@ -53,7 +48,7 @@ func New() (*Resolver, error) {
 	return r, nil
 }
 
-func (r *Resolver) Resolve(cgroupID uint64) *ContainerInfo {
+func (r *Resolver) Resolve(cgroupID uint64) *core.ContainerInfo {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	// Maybe search if container not found?
@@ -83,7 +78,7 @@ func (r *Resolver) updateInfo() error {
 			return err
 		}
 
-		info := &ContainerInfo{
+		info := &core.ContainerInfo{
 			ID:    container.ID,
 			Name:  strings.TrimPrefix(inspect.Name, "/"),
 			Image: container.Image,
@@ -121,7 +116,7 @@ func getCgroupID(pid int) (uint64, error) {
 }
 
 // Monitor docker events
-func (r *Resolver) MonitorEvents(ctx context.Context) {
+func (r *Resolver) MonitorEventsLoop(ctx context.Context) {
 	eventCh, errCh := r.docker.Events(ctx, events.ListOptions{
 		Filters: filters.NewArgs(
 			filters.Arg("type", "container"),

@@ -4,10 +4,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ArturLukianov/eBPF-monitor/internal/core"
 	"github.com/ArturLukianov/eBPF-monitor/internal/helpers"
 )
 
-// This struct is used to identify started, but not accepted connections
+// This struct is used to identify (index) started, but not accepted connections
 type IncompleteConnection struct {
 	SrcAddr uint32
 	SrcPort uint16
@@ -23,42 +24,25 @@ type PendingConnectionEntry struct {
 	SrcProcessName string
 }
 
-// This struct holds info about accepted connections with data from connect
-type ConnectionEntry struct {
-	Timestamp      time.Time
-	SrcCgroupID    uint64
-	SrcPID         uint32
-	SrcProcessName string
-
-	DstCgroupID    uint64
-	DstPID         uint32
-	DstProcessName string
-
-	SrcAddr string
-	SrcPort uint16
-	DstAddr string
-	DstPort uint16
-}
-
 type Correlator struct {
 	mu      sync.Mutex
 	pending map[IncompleteConnection]*PendingConnectionEntry
 	timeout time.Duration
-	output  chan ConnectionEntry
+	output  chan core.Event
 }
 
 func New(timeout time.Duration) *Correlator {
 	corr := &Correlator{
 		timeout: timeout,
 		pending: make(map[IncompleteConnection]*PendingConnectionEntry),
-		output:  make(chan ConnectionEntry, 1024),
+		output:  make(chan core.Event, 1024),
 	}
 	go corr.Cleanup()
 
 	return corr
 }
 
-func (c *Correlator) Output() <-chan ConnectionEntry {
+func (c *Correlator) Output() <-chan core.Event {
 	return c.output
 }
 
@@ -128,8 +112,10 @@ func (c *Correlator) HandleAccept(localAddr uint32, localPort uint16,
 		return
 	}
 
-	connEntry := ConnectionEntry{
-		Timestamp:      entry.Timestamp,
+	event := core.Event{
+		EventType: "connection",
+		Timestamp: entry.Timestamp,
+
 		SrcCgroupID:    entry.SrcCgroupID,
 		SrcPID:         entry.SrcPID,
 		SrcProcessName: entry.SrcProcessName,
@@ -144,7 +130,7 @@ func (c *Correlator) HandleAccept(localAddr uint32, localPort uint16,
 		DstPort: localPort,
 	}
 
-	c.output <- connEntry // TODO: handle if channel is full
+	c.output <- event // TODO: handle if channel is full
 
 	delete(c.pending, conn)
 }

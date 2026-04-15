@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -14,23 +15,34 @@ import (
 	"github.com/cilium/ebpf/rlimit"
 	"github.com/lmittmann/tint"
 
+	"github.com/ArturLukianov/eBPF-monitor/internal/core"
 	"github.com/ArturLukianov/eBPF-monitor/internal/correlator"
 	bpf "github.com/ArturLukianov/eBPF-monitor/internal/ebpf"
 	"github.com/ArturLukianov/eBPF-monitor/internal/output"
 	"github.com/ArturLukianov/eBPF-monitor/internal/resolver"
+	"github.com/ArturLukianov/eBPF-monitor/internal/ruleengine"
 )
 
 var filterPrefixArg string
+var debugArg bool
+var rulesFolderArg string
 
 func init() {
 	// Parse flags
 	flag.StringVar(&filterPrefixArg, "filter-prefix", "", "Prefix filter for container names")
+	flag.StringVar(&rulesFolderArg, "rules", "./rules", "Folder with alert rules (*.yaml)")
+	flag.BoolVar(&debugArg, "debug", false, "Enable debug mode")
 	flag.Parse()
 
 	// Setup logger
+	logLevel := slog.LevelInfo
+	if debugArg {
+		logLevel = slog.LevelDebug
+	}
+
 	slog.SetDefault(slog.New(
 		tint.NewHandler(os.Stderr, &tint.Options{
-			Level: slog.LevelDebug,
+			Level: logLevel,
 		}),
 	))
 
@@ -43,6 +55,13 @@ func init() {
 }
 
 func main() {
+	// Setup engine
+	engine := ruleengine.New(rulesFolderArg)
+	if engine == nil {
+		slog.Error("could not create engine")
+		os.Exit(-1)
+	}
+
 	// Load compiled eBPF
 	objs := bpf.MonitorObjects{}
 	err := bpf.LoadMonitorObjects(&objs, nil)
@@ -74,13 +93,46 @@ func main() {
 		slog.Error("could not create resolver", "error", err.Error())
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	go resolver.MonitorEvents(ctx)
+	go resolver.MonitorEventsLoop(ctx)
 
 	// Setup correlator
 	corr := correlator.New(time.Second * 5)
 
+	// Fan out + Filter + Enrich events to output and rule engine
+	outputCh := make(chan core.Event, 1024)
+	engineCh := make(chan core.Event, 1024)
+
+	go func() {
+		for event := range corr.Output() {
+			srcInfo := resolver.Resolve(event.SrcCgroupID)
+			dstInfo := resolver.Resolve(event.DstCgroupID)
+
+			// If container not found, skip
+			if srcInfo == nil || dstInfo == nil {
+				continue
+			}
+
+			// If filter is set, drop not matching connections
+			if filterPrefixArg != "" {
+				if !strings.HasPrefix(srcInfo.Name, filterPrefixArg) &&
+					!strings.HasPrefix(dstInfo.Name, filterPrefixArg) {
+					continue
+				}
+			}
+
+			event.SrcContainer = *srcInfo
+			event.DstContainer = *dstInfo
+
+			outputCh <- event
+			engineCh <- event
+		}
+	}()
+
+	alertsCh := engine.Alerts()
+
 	// Setup output
-	go output.OutputLoop(corr.Output(), resolver, filterPrefixArg)
+	go output.OutputLoop(outputCh, alertsCh)
+	go engine.ProcessLoop(engineCh)
 
 	slog.Info("eBPF-monitor started")
 
@@ -99,6 +151,8 @@ func main() {
 		rd.Close()
 		corr.Close()
 		cancel()
+		close(engineCh)
+		close(outputCh)
 	}()
 
 	// Read events from ringbuffer

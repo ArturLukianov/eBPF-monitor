@@ -4,94 +4,80 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"strings"
 
-	"github.com/ArturLukianov/eBPF-monitor/internal/correlator"
-	"github.com/ArturLukianov/eBPF-monitor/internal/resolver"
+	"github.com/ArturLukianov/eBPF-monitor/internal/core"
 )
 
 type StructuredOutput struct {
-	Type      string `json:"type"`       // "event" for events
-	EventType string `json:"event_type"` // "connection" for connection events
+	Type string `json:"type"` // "event" for events, "alert" for alerts
 
-	// Connection event data
-	Data struct {
-		SrcContainer   string `json:"src_container"`
-		SrcProcessName string `json:"src_process_name"`
-		SrcPID         uint32 `json:"src_pid"`
-		SrcCgroupID    uint64 `json:"src_cgroup_id"`
-		SrcAddr        string `json:"src_addr"`
-		SrcPort        uint16 `json:"src_port"`
-
-		DstContainer   string `json:"dst_container"`
-		DstProcessName string `json:"dst_process_name"`
-		DstPID         uint32 `json:"dst_pid"`
-		DstCgroupID    uint64 `json:"dst_cgroup_id"`
-		DstAddr        string `json:"dst_addr"`
-		DstPort        uint16 `json:"dst_port"`
-	} `json:"data"`
+	Event core.Event `json:"event,omitempty"`
+	Alert core.Alert `json:"alert,omitempty"`
 }
 
-func OutputLoop(chanEntry <-chan correlator.ConnectionEntry, resolver *resolver.Resolver, filterPrefix string) {
-	for connEntry := range chanEntry {
-		srcInfo := resolver.Resolve(connEntry.SrcCgroupID)
-		dstInfo := resolver.Resolve(connEntry.DstCgroupID)
-
-		// If container not found, skip
-		if srcInfo == nil || dstInfo == nil {
-			continue
-		}
-
-		// If filter is set, drop not matching connections
-		if filterPrefix != "" {
-			if !strings.HasPrefix(srcInfo.Name, filterPrefix) &&
-				!strings.HasPrefix(dstInfo.Name, filterPrefix) {
+func OutputLoop(eventCh <-chan core.Event, alertCh <-chan core.Alert) {
+	for {
+		select {
+		case event, ok := <-eventCh:
+			if !ok {
+				eventCh = nil
 				continue
 			}
+
+			slog.Debug("New event", "event", "connection",
+				"srcContainer", event.SrcContainer.Name,
+				"srcPID", event.SrcPID,
+				"srcProcessName", event.SrcProcessName,
+				"srcCgroupID", event.SrcCgroupID,
+				"srcAddr", event.SrcAddr,
+				"srcPort", event.SrcPort,
+
+				"dstContainer", event.DstContainer.Name,
+				"dstPID", event.DstPID,
+				"dstProcessName", event.DstProcessName,
+				"dstCgroupID", event.DstCgroupID,
+				"dstAddr", event.DstAddr,
+				"dstPort", event.DstPort,
+			)
+
+			// Output event
+
+			var out StructuredOutput
+
+			out.Type = "event"
+			out.Event = event
+
+			eventData, err := json.Marshal(out)
+			if err != nil {
+				slog.Error("Failed to marshal event", "error", err)
+				continue
+			}
+
+			fmt.Println(string(eventData)) // TODO: Maybe direct write to stdout?
+		case alert, ok := <-alertCh:
+			if !ok {
+				alertCh = nil
+				continue
+			}
+
+			slog.Warn("New alert", "alert", alert)
+
+			var out StructuredOutput
+			out.Type = "alert"
+			out.Alert = alert
+
+			alertData, err := json.Marshal(out)
+			if err != nil {
+				slog.Error("Failed to marshal alert", "error", err)
+				continue
+			}
+
+			fmt.Println(string(alertData)) // TODO: Maybe direct write to stdout?
 		}
 
-		slog.Debug("New event", "event", "connection",
-			"srcContainer", srcInfo.Name,
-			"srcPID", connEntry.SrcPID,
-			"srcProcessName", connEntry.SrcProcessName,
-			"srcCgroupID", connEntry.SrcCgroupID,
-			"srcAddr", connEntry.SrcAddr,
-			"srcPort", connEntry.SrcPort,
-
-			"dstContainer", dstInfo.Name,
-			"dstPID", connEntry.DstPID,
-			"dstProcessName", connEntry.DstProcessName,
-			"dstCgroupID", connEntry.DstCgroupID,
-			"dstAddr", connEntry.DstAddr,
-			"dstPort", connEntry.DstPort,
-		)
-
-		// Output event
-
-		var out StructuredOutput
-
-		out.Type = "event"
-		out.EventType = "connection"
-		out.Data.SrcPID = connEntry.SrcPID
-		out.Data.SrcProcessName = connEntry.SrcProcessName
-		out.Data.SrcContainer = srcInfo.Name
-
-		out.Data.DstPID = connEntry.DstPID
-		out.Data.DstProcessName = connEntry.DstProcessName
-		out.Data.DstContainer = dstInfo.Name
-
-		out.Data.SrcAddr = connEntry.SrcAddr
-		out.Data.SrcPort = connEntry.SrcPort
-
-		out.Data.DstAddr = connEntry.DstAddr
-		out.Data.DstPort = connEntry.DstPort
-
-		eventData, err := json.Marshal(out)
-		if err != nil {
-			slog.Error("Failed to marshal event", "error", err)
-			continue
+		if eventCh == nil && alertCh == nil {
+			// Exit if both channels are closed
+			return
 		}
-
-		fmt.Println(string(eventData)) // TODO: Maybe direct write to stdout?
 	}
 }

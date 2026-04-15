@@ -8,6 +8,12 @@ This tool requires eBPF to run. You can check that eBPF is available by running:
 ls /sys/kernel/btf/vmlinux
 ```
 
+Generate required headers (optional):
+
+```bash
+bpftool btf dump file /sys/kernel/btf/vmlinux format c > bpf/headers/vmlinux.h
+```
+
 Build:
 
 ```bash
