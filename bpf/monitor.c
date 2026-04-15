@@ -24,6 +24,8 @@ struct event {
     __u16 src_port;
     __u32 dst_addr;
     __u16 dst_port;
+
+    char comm[16];
 };
 
 // Ring buffer map
@@ -41,6 +43,8 @@ void fill_common_fields(struct event *event, enum event_type type) {
     event->pid = bpf_get_current_pid_tgid() >> 32;
     event->cgroup_id = bpf_get_current_cgroup_id(); // This value is actually inode number of cgroup v2 directory
     event->timestamp = bpf_ktime_get_ns();
+
+    bpf_get_current_comm(&event->comm, sizeof(event->comm));
 }
 
 // tcp_connect - outgoing connections

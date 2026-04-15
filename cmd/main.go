@@ -120,12 +120,12 @@ func main() {
 			corr.HandleConnect(
 				event.SrcAddr, event.SrcPort,
 				event.DstAddr, event.DstPort,
-				event.CgroupId, event.Pid)
+				event.CgroupId, event.Pid, event.Comm)
 		case bpf.EVENT_ACCEPT:
 			corr.HandleAccept(
 				event.SrcAddr, event.SrcPort,
 				event.DstAddr, event.DstPort,
-				event.CgroupId, event.Pid)
+				event.CgroupId, event.Pid, event.Comm)
 		}
 	}
 }

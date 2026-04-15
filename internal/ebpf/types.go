@@ -46,6 +46,8 @@ type MonitorEvent struct {
 	Pad3    [2]byte
 	DstAddr uint32
 	DstPort uint16
+
+	Comm [16]byte
 }
 
 // Event types

@@ -17,19 +17,22 @@ type IncompleteConnection struct {
 
 // This struct is used to store information from connect of incomplete connections
 type PendingConnectionEntry struct {
-	Timestamp   time.Time
-	SrcCgroupID uint64
-	SrcPID      uint32
+	Timestamp      time.Time
+	SrcCgroupID    uint64
+	SrcPID         uint32
+	SrcProcessName string
 }
 
 // This struct holds info about accepted connections with data from connect
 type ConnectionEntry struct {
-	Timestamp   time.Time
-	SrcCgroupID uint64
-	SrcPID      uint32
+	Timestamp      time.Time
+	SrcCgroupID    uint64
+	SrcPID         uint32
+	SrcProcessName string
 
-	DstCgroupID uint64
-	DstPID      uint32
+	DstCgroupID    uint64
+	DstPID         uint32
+	DstProcessName string
 
 	SrcAddr string
 	SrcPort uint16
@@ -84,7 +87,7 @@ func (c *Correlator) Cleanup() {
 
 func (c *Correlator) HandleConnect(srcAddr uint32, srcPort uint16,
 	dstAddr uint32, dstPort uint16,
-	cgroupID uint64, pid uint32) {
+	cgroupID uint64, pid uint32, comm [16]byte) {
 
 	conn := IncompleteConnection{
 		SrcAddr: srcAddr,
@@ -97,16 +100,17 @@ func (c *Correlator) HandleConnect(srcAddr uint32, srcPort uint16,
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.pending[conn] = &PendingConnectionEntry{
-		Timestamp:   time.Now(),
-		SrcCgroupID: cgroupID,
-		SrcPID:      pid,
+		Timestamp:      time.Now(),
+		SrcCgroupID:    cgroupID,
+		SrcPID:         pid,
+		SrcProcessName: helpers.NullTermStr(comm[:]),
 	}
 }
 
 // local - who receives the connection, remote - who initiates
 func (c *Correlator) HandleAccept(localAddr uint32, localPort uint16,
 	remoteAddr uint32, remotePort uint16,
-	cgroupID uint64, pid uint32) {
+	cgroupID uint64, pid uint32, comm [16]byte) {
 
 	conn := IncompleteConnection{
 		SrcAddr: remoteAddr,
@@ -125,11 +129,14 @@ func (c *Correlator) HandleAccept(localAddr uint32, localPort uint16,
 	}
 
 	connEntry := ConnectionEntry{
-		Timestamp:   entry.Timestamp,
-		SrcCgroupID: entry.SrcCgroupID,
-		SrcPID:      entry.SrcPID,
-		DstCgroupID: cgroupID,
-		DstPID:      pid,
+		Timestamp:      entry.Timestamp,
+		SrcCgroupID:    entry.SrcCgroupID,
+		SrcPID:         entry.SrcPID,
+		SrcProcessName: entry.SrcProcessName,
+
+		DstCgroupID:    cgroupID,
+		DstPID:         pid,
+		DstProcessName: helpers.NullTermStr(comm[:]),
 
 		SrcAddr: helpers.BytesToIPv4(remoteAddr),
 		SrcPort: remotePort,

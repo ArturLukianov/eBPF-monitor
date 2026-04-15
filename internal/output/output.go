@@ -53,12 +53,14 @@ func OutputLoop(chanEntry <-chan correlator.ConnectionEntry, resolver *resolver.
 		slog.Debug("New event", "event", "connection",
 			"srcContainer", srcInfo.Name,
 			"srcPID", connEntry.SrcPID,
+			"srcProcessName", connEntry.SrcProcessName,
 			"srcCgroupID", connEntry.SrcCgroupID,
 			"srcAddr", connEntry.SrcAddr,
 			"srcPort", connEntry.SrcPort,
 
 			"dstContainer", dstInfo.Name,
 			"dstPID", connEntry.DstPID,
+			"dstProcessName", connEntry.DstProcessName,
 			"dstCgroupID", connEntry.DstCgroupID,
 			"dstAddr", connEntry.DstAddr,
 			"dstPort", connEntry.DstPort,
@@ -70,11 +72,18 @@ func OutputLoop(chanEntry <-chan correlator.ConnectionEntry, resolver *resolver.
 
 		out.Type = "event"
 		out.EventType = "connection"
+		out.Data.SrcPID = connEntry.SrcPID
+		out.Data.SrcProcessName = connEntry.SrcProcessName
 		out.Data.SrcContainer = srcInfo.Name
+
+		out.Data.DstPID = connEntry.DstPID
+		out.Data.DstProcessName = connEntry.DstProcessName
 		out.Data.DstContainer = dstInfo.Name
+
 		out.Data.SrcAddr = connEntry.SrcAddr
-		out.Data.DstAddr = connEntry.DstAddr
 		out.Data.SrcPort = connEntry.SrcPort
+
+		out.Data.DstAddr = connEntry.DstAddr
 		out.Data.DstPort = connEntry.DstPort
 
 		eventData, err := json.Marshal(out)
