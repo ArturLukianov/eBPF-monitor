@@ -1,0 +1,13 @@
+name: ssh_connection_burst
+description: >
+  Burst of TCP connections to SSH port from a single container.
+  Indicates brute-force credential guessing or automated SSH scanning.
+severity: HIGH
+mitre: T1110.001
+match:
+  dst_port: 22
+detect:
+  mode: threshold
+  count: 5
+  window: 10s
+  group_by: [src_container, dst_container]

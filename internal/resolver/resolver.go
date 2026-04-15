@@ -6,6 +6,7 @@ package resolver
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -139,7 +140,7 @@ func (r *Resolver) MonitorEvents(ctx context.Context) {
 				// TODO: remove from cache
 			}
 		case err := <-errCh:
-			fmt.Printf("error while monitoring events: %d\n", err)
+			slog.Error("error while monitoring events", "error", err)
 			return
 		case <-ctx.Done():
 			return

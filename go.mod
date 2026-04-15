@@ -5,6 +5,8 @@ go 1.25.6
 require (
 	github.com/cilium/ebpf v0.21.0
 	github.com/docker/docker v28.3.1+incompatible
+	github.com/lmittmann/tint v1.1.3
+	go.yaml.in/yaml/v3 v3.0.4
 )
 
 require (
