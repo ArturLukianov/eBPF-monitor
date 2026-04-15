@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -28,6 +30,10 @@ func init() {
 }
 
 func main() {
+	// Parse flags
+	filterPrefixArg := flag.String("filter-prefix", "", "Prefix filter for container names")
+	flag.Parse()
+
 	// Load compiled eBPF
 	objs := bpf.MonitorObjects{}
 	err := bpf.LoadMonitorObjects(&objs, nil)
@@ -66,6 +72,18 @@ func main() {
 		for connEntry := range corr.Output() {
 			srcInfo := resolver.Resolve(connEntry.SrcCgroupID)
 			dstInfo := resolver.Resolve(connEntry.DstCgroupID)
+
+			// If container not found, skip
+			if srcInfo == nil || dstInfo == nil {
+				continue
+			}
+
+			// If filter is set, drop not matching connections
+			if *filterPrefixArg != "" {
+				if srcInfo != nil && !strings.HasPrefix(srcInfo.Name, *filterPrefixArg) && !strings.HasPrefix(dstInfo.Name, *filterPrefixArg) {
+					continue
+				}
+			}
 
 			// Output event
 			fmt.Printf("[EVENT]: CONNECT [%s] pid=%d cgroup=%d %s:%d -> [%s] pid=%d cgroup=%d %s:%d\n",
