@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/ArturLukianov/eBPF-monitor/internal/correlator"
 	bpf "github.com/ArturLukianov/eBPF-monitor/internal/ebpf"
+	"github.com/ArturLukianov/eBPF-monitor/internal/resolver"
 )
 
 func init() {
@@ -48,19 +50,32 @@ func main() {
 	}
 	defer kpInetCskAccept.Close()
 
+	// Setup resolver
+	resolver, err := resolver.New()
+	if err != nil {
+		log.Fatalf("could not create resolver: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	go resolver.MonitorEvents(ctx)
+
 	// Setup correlator
 	corr := correlator.New(time.Second * 5)
 
 	// Setup logger
 	go func() {
 		for connEntry := range corr.Output() {
+			srcInfo := resolver.Resolve(connEntry.SrcCgroupID)
+			dstInfo := resolver.Resolve(connEntry.DstCgroupID)
+
 			// Output event
-			fmt.Printf("[EVENT]: CONNECT pid=%d cgroup=%d %s:%d -> pid=%d cgroup=%d %s:%d\n",
+			fmt.Printf("[EVENT]: CONNECT [%s] pid=%d cgroup=%d %s:%d -> [%s] pid=%d cgroup=%d %s:%d\n",
+				srcInfo.Name,
 				connEntry.SrcPID,
 				connEntry.SrcCgroupID,
 				connEntry.SrcAddr,
 				connEntry.SrcPort,
 
+				dstInfo.Name,
 				connEntry.DstPID,
 				connEntry.DstCgroupID,
 				connEntry.DstAddr,
@@ -84,6 +99,7 @@ func main() {
 		<-sig
 		rd.Close()
 		corr.Close()
+		cancel()
 	}()
 
 	// Read events from ringbuffer
