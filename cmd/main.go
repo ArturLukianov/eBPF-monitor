@@ -91,6 +91,7 @@ func main() {
 	resolver, err := resolver.New()
 	if err != nil {
 		slog.Error("could not create resolver", "error", err.Error())
+		os.Exit(-1)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	go resolver.MonitorEventsLoop(ctx)

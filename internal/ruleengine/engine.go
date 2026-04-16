@@ -20,7 +20,9 @@ type RuleEngine struct {
 }
 
 func New(rulesPath string) *RuleEngine {
-	engine := &RuleEngine{}
+	engine := &RuleEngine{
+		alerts: make(chan core.Alert, 100),
+	}
 	err := engine.LoadRules(rulesPath)
 	if err != nil {
 		slog.Error("could not load rules", "error", err.Error())
