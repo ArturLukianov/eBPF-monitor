@@ -146,12 +146,12 @@ int handle_execve(struct trace_event_raw_sys_enter *ctx) {
     fill_common_fields(event, EVENT_EXEC);
 
     const char* pathname = (const char*)ctx->args[0];
-    bpf_probe_read_kernel_str(&event->filepath, sizeof(event->filepath), pathname);
+    bpf_probe_read_user_str(&event->filepath, sizeof(event->filepath), pathname);
 
     // Parent info
     struct task_struct *task = (struct task_struct *)bpf_get_current_task();
     struct task_struct *parent = BPF_CORE_READ(task, real_parent);
-    event->ppid = BPF_CORE_READ(parent, pid);
+    event->ppid = BPF_CORE_READ(parent, tgid);
     bpf_probe_read_kernel_str(&event->parent_comm, sizeof(event->parent_comm), BPF_CORE_READ(parent, comm));
 
     bpf_ringbuf_submit(event, 0);

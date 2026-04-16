@@ -1,6 +1,6 @@
 name: mysqld_php_file_write
 description: >
-  The MySQL daemon wrote a .php file to the web root directory.
+  The MySQL connection wrote a .php file to the web root directory.
   mysqld has no legitimate reason to write PHP files to /var/www.
   This is the eBPF fingerprint of the SELECT INTO OUTFILE web shell attack:
   "SELECT '<?php system($_GET[cmd]); ?>' INTO OUTFILE '/var/www/html/shell.php'"
@@ -10,6 +10,6 @@ severity: CRITICAL
 mitre: T1505.003
 match:
   event_type: file_open
-  src_process: mysqld
+  src_process: connection
   file_path: "/var/www/html/*.php"
   file_op: write

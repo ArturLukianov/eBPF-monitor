@@ -1,0 +1,13 @@
+name: ssh_brute_force
+description: >
+  SSH brute-force attack launched from container
+severity: HIGH
+mitre: T1110.001
+match:
+  event_type: connection
+  dst_port: 22
+detect:
+  mode: threshold
+  count: 3
+  window: 10s
+  group_by: [src_container, dst_container]

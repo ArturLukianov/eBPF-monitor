@@ -25,3 +25,7 @@ any:
     src_process: vsftpd
     file_path: "/var/ftp/pub/*.php"
     file_op: write
+  - event_type: file_open
+    src_process: vsftpd
+    file_path: "*.php"
+    file_op: write

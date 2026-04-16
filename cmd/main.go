@@ -118,6 +118,7 @@ func main() {
 	eventsCh := make(chan core.Event, 1024)
 
 	go func() {
+		defer close(eventsCh)
 		for event := range corr.Output() {
 			eventsCh <- event
 		}
@@ -184,7 +185,6 @@ func main() {
 		cancel()
 		close(engineCh)
 		close(outputCh)
-		close(eventsCh)
 	}()
 
 	// Read events from ringbuffer

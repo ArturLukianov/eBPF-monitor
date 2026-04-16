@@ -1,0 +1,20 @@
+name: http_daemon_shell
+description: HTTP daemon (apache2 or nginx) launched system shell. This behavior is indicative of a web shell attack.
+severity: HIGH
+mitre: T1505.003
+any:
+  - event_type: exec
+    parent_process: apache2
+    exec_path: /bin/bash
+
+  - event_type: exec
+    parent_process: apache2
+    exec_path: /bin/sh
+
+  - event_type: exec
+    parent_process: nginx
+    exec_path: /bin/bash
+
+  - event_type: exec
+    parent_process: nginx
+    exec_path: /bin/sh

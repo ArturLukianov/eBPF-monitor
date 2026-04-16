@@ -4,8 +4,6 @@ description: >
   Legitimate use of a private key goes through ssh-agent or a direct
   ssh invocation — raw reading of the key file (e.g. via cat, cp, scp)
   strongly suggests exfiltration for reuse on another host.
-  Covers Lab 02: attacker SSHes to victim1 and runs
-  "cat /home/deploy/.ssh/id_rsa" to steal the unprotected deploy key.
 severity: HIGH
 mitre: T1552.004
 any:
