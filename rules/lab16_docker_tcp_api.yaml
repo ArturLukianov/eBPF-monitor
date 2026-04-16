@@ -1,0 +1,13 @@
+name: docker_tcp_api_access
+description: >
+  A TCP connection was made to port 2375 — the Docker daemon's unauthenticated HTTP API
+  port. When Docker is configured with -H tcp://0.0.0.0:2375 and no TLS, any client
+  on the network has full unauthenticated control over container lifecycle, including
+  creating privileged containers with the host filesystem mounted (equivalent to remote root).
+  No legitimate traffic should reach port 2375 in a properly hardened environment.
+  Covers Lab 16: attacker uses curl to the Docker TCP API to spawn a privileged container.
+severity: CRITICAL
+mitre: T1611
+match:
+  event_type: connection
+  dst_port: 2375

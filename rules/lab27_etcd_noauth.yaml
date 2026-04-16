@@ -1,0 +1,14 @@
+name: etcd_noauth_access
+description: >
+  A TCP connection was made to etcd's client port 2379. etcd stores all Kubernetes
+  cluster state, including Secrets (service account tokens, TLS certificates, application
+  passwords). Without client certificate authentication, any process with network access
+  can dump every key via a simple GET request.
+  Connection to port 2379 from an etcdctl client or any non-etcd process is anomalous.
+  Covers Lab 27: attacker uses etcdctl to dump all /registry/secrets/ keys from etcd,
+  extracts a cluster-admin JWT, and uses it against the Kubernetes API.
+severity: CRITICAL
+mitre: T1552.007
+match:
+  event_type: connection
+  dst_port: 2379

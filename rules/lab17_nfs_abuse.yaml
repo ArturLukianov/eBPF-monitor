@@ -1,0 +1,17 @@
+name: nfs_authorized_keys_write
+description: >
+  A file named authorized_keys was written via an NFS-mounted path (/mnt/*).
+  When an NFS export has no_root_squash, a root user on the client preserves root UID
+  on the server, allowing overwrite of authorized_keys in any exported directory.
+  The attacker mounts the NFS share, writes their public key to
+  /mnt/<share>/authorized_keys, then SSHes without a password.
+  The write appears on the NFS client side at the mountpoint path /mnt/*/authorized_keys.
+  Covers Lab 17.
+severity: CRITICAL
+mitre: T1098.004
+any:
+  - event_type: file_open
+    file_path: "/mnt/*/authorized_keys"
+    file_op: write
+  - event_type: connection
+    dst_port: 2049

@@ -1,0 +1,27 @@
+name: ftp_php_webshell_upload
+description: >
+  The FTP daemon (vsftpd) wrote a PHP file to a web-accessible directory.
+  Anonymous FTP write access to a directory served by a web server allows an attacker
+  to upload a PHP web shell, then trigger OS command execution via HTTP.
+  vsftpd writing .php files to /var/www is unambiguous: the FTP server has no
+  legitimate reason to write PHP source files.
+  Covers Lab 19: attacker uploads shell.php via anonymous FTP to victim's web root.
+severity: CRITICAL
+mitre: T1505.003
+any:
+  - event_type: file_open
+    src_process: vsftpd
+    file_path: "/var/www/html/*.php"
+    file_op: write
+  - event_type: file_open
+    src_process: vsftpd
+    file_path: "/var/www/html/uploads/*.php"
+    file_op: write
+  - event_type: file_open
+    src_process: vsftpd
+    file_path: "/var/www/html/pub/*.php"
+    file_op: write
+  - event_type: file_open
+    src_process: vsftpd
+    file_path: "/var/ftp/pub/*.php"
+    file_op: write

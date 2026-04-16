@@ -1,0 +1,17 @@
+name: ssh_invoked_under_sudo
+description: >
+  An SSH binary was executed with sudo as its direct parent process.
+  Legitimate SSH use does not go through sudo. This pattern is the
+  fingerprint of SSH agent socket hijacking: the attacker escalates to root
+  via NOPASSWD sudo, then runs "sudo env SSH_AUTH_SOCK=<stolen_socket> ssh ..."
+  to authenticate using another user's forwarded agent without possessing
+  the private key. Covers Lab 03 (SSH_AUTH_SOCK hijack on jumphost).
+severity: HIGH
+mitre: T1563.001
+any:
+  - event_type: exec
+    exec_path: "/usr/bin/ssh"
+    parent_process: sudo
+  - event_type: exec
+    exec_path: "/bin/ssh"
+    parent_process: sudo

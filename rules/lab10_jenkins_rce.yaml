@@ -1,0 +1,22 @@
+name: java_jvm_shell_execution
+description: >
+  A Java JVM process executed a shell binary.
+  The JVM has no legitimate reason to spawn /bin/bash or /bin/sh directly —
+  build systems call specific tools, not bare shells.
+  This is the eBPF fingerprint of Groovy/JSP Runtime.exec() RCE:
+  Groovy's ["bash", "-c", "cmd"].execute() and JSP's Runtime.getRuntime().exec()
+  both result in the JVM process (comm="java") calling fork()+execve("/bin/bash").
+  Covers Lab 10 (Jenkins /scriptText unauthenticated Groovy execution) and
+  Lab 12 (Tomcat Manager WAR → JSP shell), since both run as java.
+severity: CRITICAL
+mitre: T1059
+any:
+  - event_type: exec
+    src_process: java
+    exec_path: "/bin/bash"
+  - event_type: exec
+    src_process: java
+    exec_path: "/bin/sh"
+  - event_type: exec
+    src_process: java
+    exec_path: "/usr/bin/bash"

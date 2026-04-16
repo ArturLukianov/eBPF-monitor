@@ -1,0 +1,21 @@
+name: ansible_adhoc_execution
+description: >
+  The ansible binary was executed on the Ansible control node. When an AWX/Tower-like
+  REST API accepts ad-hoc command requests without authentication, an attacker calls
+  the API with module_name=shell and arbitrary arguments. The server then execs ansible
+  to run the command across all managed nodes via SSH.
+  Seeing ansible exec'd from a web service process (Python Flask, gunicorn, uwsgi) is
+  the eBPF signal for unauthenticated API abuse.
+  Covers Lab 26: attacker POSTs to /api/v2/ad_hoc_commands/ without authentication,
+  triggering ansible to SSH into managed-node and run the attacker's shell command.
+severity: HIGH
+mitre: T1072
+any:
+  - event_type: exec
+    exec_path: "/usr/bin/ansible"
+  - event_type: exec
+    exec_path: "/usr/local/bin/ansible"
+  - event_type: exec
+    exec_path: "/usr/bin/ansible-playbook"
+  - event_type: exec
+    exec_path: "/usr/local/bin/ansible-playbook"

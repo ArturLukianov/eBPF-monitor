@@ -1,0 +1,15 @@
+name: memcached_noauth_access
+description: >
+  A TCP connection was made to Memcached port 11211. Memcached has no authentication.
+  Any process on the network can read, write, or delete any cached key — including
+  application session data, user tokens, and transient secrets.
+  By injecting a crafted admin session into Memcached, an attacker hijacks admin
+  privileges in the web application, which may expose RCE (e.g. admin ping/backup
+  features that execute shell commands).
+  Covers Lab 29: attacker uses netcat to inject an admin session into Memcached,
+  then uses the hijacked session cookie to access the admin panel and trigger RCE.
+severity: HIGH
+mitre: T1563
+match:
+  event_type: connection
+  dst_port: 11211

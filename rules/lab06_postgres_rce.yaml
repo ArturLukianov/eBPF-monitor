@@ -1,0 +1,22 @@
+name: postgres_shell_execution
+description: >
+  A PostgreSQL backend process executed a shell binary.
+  postgres has no legitimate reason to spawn an interactive shell.
+  This is the direct eBPF fingerprint of the COPY TO PROGRAM attack:
+  the postgres backend calls popen("/bin/sh -c <command>") which produces
+  an execve event where the calling process is "postgres" and the
+  spawned binary is /bin/sh. A superuser can trigger this with:
+  COPY (SELECT 'x') TO PROGRAM 'touch /tmp/pwned'
+  Covers Lab 06.
+severity: CRITICAL
+mitre: T1059
+any:
+  - event_type: exec
+    src_process: postgres
+    exec_path: "/bin/sh"
+  - event_type: exec
+    src_process: postgres
+    exec_path: "/bin/bash"
+  - event_type: exec
+    src_process: postgres
+    exec_path: "/usr/bin/bash"

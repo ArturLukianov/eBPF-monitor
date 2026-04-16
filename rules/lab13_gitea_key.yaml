@@ -1,0 +1,27 @@
+name: ssh_nonstandard_key_usage
+description: >
+  The SSH client read a private key file from an unexpected location outside ~/.ssh.
+  Legitimate SSH key usage reads keys from ~/.ssh/ or /etc/ssh/. Reading a key from /tmp
+  is a strong indicator that a key was recently exfiltrated (e.g. cloned from a Git
+  repository) and is being used immediately for lateral movement.
+  Covers Lab 13: attacker clones a Gitea repo containing a committed deploy key, copies
+  it to /tmp/found_deploy_key, and authenticates to victim2 with ssh -i /tmp/found_deploy_key.
+severity: HIGH
+mitre: T1552.004
+any:
+  - event_type: file_open
+    src_process: ssh
+    file_path: "/tmp/*key*"
+    file_op: read
+  - event_type: file_open
+    src_process: ssh
+    file_path: "/tmp/*rsa*"
+    file_op: read
+  - event_type: file_open
+    src_process: ssh
+    file_path: "/tmp/*ed25519*"
+    file_op: read
+  - event_type: file_open
+    src_process: ssh
+    file_path: "/tmp/*ecdsa*"
+    file_op: read

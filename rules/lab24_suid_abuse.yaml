@@ -1,0 +1,20 @@
+name: suid_cp_passwd_write
+description: >
+  The cp binary wrote to /etc/passwd or /etc/shadow. cp is sometimes given the SUID
+  bit as a misconfiguration, allowing any user to overwrite root-owned files.
+  The classic exploit: craft a /etc/passwd with a new zero-UID entry (no password),
+  cp it over the real /etc/passwd, then su to the new user for a root shell.
+  cp writing to /etc/passwd is always anomalous — the system installer or package
+  manager (not cp) manages this file.
+  Covers Lab 24: lowuser abuses SUID /bin/cp to overwrite /etc/passwd with backdoor entry.
+severity: CRITICAL
+mitre: T1548.001
+any:
+  - event_type: file_open
+    src_process: cp
+    file_path: "/etc/passwd"
+    file_op: write
+  - event_type: file_open
+    src_process: cp
+    file_path: "/etc/shadow"
+    file_op: write

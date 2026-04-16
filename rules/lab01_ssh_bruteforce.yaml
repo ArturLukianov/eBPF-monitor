@@ -1,0 +1,17 @@
+name: ssh_brute_force_hydra
+description: >
+  Hydra password-guessing tool connecting to SSH port.
+  Any connection from hydra is suspicious — it is exclusively used for
+  credential brute-forcing. Single match fires immediately; the threshold
+  fires again if the burst continues, providing escalation.
+severity: HIGH
+mitre: T1110.001
+match:
+  event_type: connection
+  src_process: hydra
+  dst_port: 22
+detect:
+  mode: threshold
+  count: 3
+  window: 10s
+  group_by: [src_container, dst_container]

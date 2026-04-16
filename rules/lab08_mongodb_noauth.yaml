@@ -1,0 +1,16 @@
+name: mongodb_unauthenticated_access
+description: >
+  The mongosh client connected to MongoDB port 27017.
+  In production, application drivers use their own connection strings and
+  mongosh is only used for administrative access. An inter-container
+  mongosh connection suggests direct manual enumeration of the database,
+  which in a no-auth deployment gives full read/write access to all collections.
+  In Lab 08, the attacker extracts Redis credentials stored in a MongoDB
+  collection, then pivots to victim2. Note: network-level detection only —
+  data volume or query content cannot be inspected at this layer.
+severity: HIGH
+mitre: T1213
+match:
+  event_type: connection
+  src_process: mongosh
+  dst_port: 27017

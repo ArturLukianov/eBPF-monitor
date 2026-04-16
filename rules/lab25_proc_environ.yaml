@@ -1,0 +1,16 @@
+name: proc_environ_enumeration
+description: >
+  A process read /proc/<pid>/environ — the environment variable file of another process.
+  Applications store secrets in environment variables (12-factor app pattern), making
+  /proc/*/environ a goldmine: database passwords, API tokens, cloud credentials, and
+  Vault tokens are all commonly found there.
+  Enumerating /proc/*/environ is anomalous for non-privileged processes; a loop over
+  all PIDs appears as a burst of these reads.
+  Covers Lab 25 (/proc/environ credential extraction → PostgreSQL lateral movement) and
+  Lab 30 (extracting VAULT_TOKEN from /proc/*/environ to dump HashiCorp Vault secrets).
+severity: HIGH
+mitre: T1552.007
+match:
+  event_type: file_open
+  file_path: "/proc/*/environ"
+  file_op: read

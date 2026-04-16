@@ -1,0 +1,17 @@
+name: vault_api_access
+description: >
+  A TCP connection was made to HashiCorp Vault's API port 8200. In this lab,
+  the Vault root token is stored in VAULT_TOKEN environment variable of a running
+  process, readable via /proc/<pid>/environ. Once extracted, the token grants full
+  access to all Vault secrets (SSH keys, DB passwords, TLS certs).
+  A connection to port 8200 from a non-Vault service process (e.g., shell script,
+  curl, Python) indicates credential theft and secret dumping in progress.
+  Covers Lab 30: attacker reads VAULT_TOKEN from /proc/*/environ on victim1,
+  calls vault:8200/v1/secret/data/ssh-key to extract an SSH private key,
+  and uses it to SSH into victim2.
+  Note: /proc/environ enumeration (first step) is also detected by proc_environ_enumeration.
+severity: CRITICAL
+mitre: T1552.007
+match:
+  event_type: connection
+  dst_port: 8200

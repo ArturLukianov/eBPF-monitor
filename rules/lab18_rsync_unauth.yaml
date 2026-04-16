@@ -1,0 +1,23 @@
+name: rsync_authorized_keys_write
+description: >
+  The rsync daemon wrote to an authorized_keys file. rsync modules exposed without
+  authentication allow any client to push arbitrary files to the module's root directory.
+  If the module root is or contains ~/.ssh/, the attacker can inject their public key
+  and gain passwordless SSH access.
+  The write appears as: src_process=rsync writing to the configured SSH directory path.
+  Covers Lab 18: attacker pushes public key to rsync://victim/rootssh/authorized_keys.
+severity: CRITICAL
+mitre: T1098.004
+any:
+  - event_type: file_open
+    src_process: rsync
+    file_path: "/root/.ssh/authorized_keys"
+    file_op: write
+  - event_type: file_open
+    src_process: rsync
+    file_path: "/home/*/.ssh/authorized_keys"
+    file_op: write
+  - event_type: file_open
+    src_process: rsync
+    file_path: "/*/.ssh/authorized_keys"
+    file_op: write

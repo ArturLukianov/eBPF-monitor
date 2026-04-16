@@ -1,0 +1,15 @@
+name: impacket_smb_access
+description: >
+  A Python process connected to SMB port 445. This is the signature of Impacket-based
+  SMB attacks: smbclient.py, psexec.py, ntlmrelayx.py, and related tools all run as
+  Python and open TCP connections to port 445. Unlike the system smbclient binary
+  (which appears as "smbclient"), Impacket tools show as "python3".
+  Covers Lab 20 (pass-the-hash via impacket smbclient.py with NTLM hash),
+  Lab 21 (PsExec payload upload via impacket admin share access), and
+  Lab 22 (NTLM relay — Python relaying authentication to port 445 on victim2).
+severity: HIGH
+mitre: T1550.002
+match:
+  event_type: connection
+  src_process: python3
+  dst_port: 445

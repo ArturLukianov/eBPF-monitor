@@ -1,0 +1,15 @@
+name: vnc_authentication
+description: >
+  A TCP connection was made to VNC port 5900. VNC with a weak or default password
+  gives full graphical desktop control, allowing arbitrary command execution via the
+  session (xdotool, xterm, keyboard input). Unlike SSH brute-force, VNC has no
+  account lockout by default.
+  A connection to port 5900 from any non-vncviewer-test process is anomalous in
+  a server environment where VNC is not a legitimate remote access channel.
+  Covers Lab 28: attacker connects with Python (vncdotool) using weak password "password"
+  and executes commands on the VNC desktop session.
+severity: HIGH
+mitre: T1021.005
+match:
+  event_type: connection
+  dst_port: 5900

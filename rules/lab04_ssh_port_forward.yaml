@@ -1,0 +1,15 @@
+name: sshd_outbound_non_ssh_port
+description: >
+  The SSH daemon (sshd) initiated an outbound TCP connection to a port
+  other than 22. sshd normally only listens and accepts inbound connections —
+  an outbound connection to a non-SSH port is a strong indicator that an
+  authenticated session is using local port forwarding (-L flag) to proxy
+  traffic to an otherwise unreachable host or service.
+  Covers Lab 04: attacker sets up "ssh -L 18080:victim2:80 root@victim1",
+  causing sshd on victim1 to connect to victim2:80 on behalf of the tunnel.
+severity: HIGH
+mitre: T1572
+match:
+  event_type: connection
+  src_process: sshd
+  dst_port: "!22"

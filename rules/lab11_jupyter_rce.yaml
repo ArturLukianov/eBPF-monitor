@@ -1,0 +1,23 @@
+name: python_shell_execution
+description: >
+  A Python interpreter process executed a shell binary.
+  This is the eBPF fingerprint of Python RCE via os.system() / subprocess / exec:
+  the Python process forks and the child calls execve("/bin/sh", ["-c", "cmd"]).
+  Covers Lab 11 (Jupyter unauthenticated kernel API — Python kernel calls os.system())
+  and Lab 23 (sudo NOPASSWD python3 GTFOBins — sudo python3 -c 'os.system("/bin/bash")').
+  Legitimate Python processes in these environments have no reason to spawn a shell.
+severity: CRITICAL
+mitre: T1059.006
+any:
+  - event_type: exec
+    src_process: python3
+    exec_path: "/bin/sh"
+  - event_type: exec
+    src_process: python3
+    exec_path: "/bin/bash"
+  - event_type: exec
+    src_process: python
+    exec_path: "/bin/sh"
+  - event_type: exec
+    src_process: python
+    exec_path: "/bin/bash"

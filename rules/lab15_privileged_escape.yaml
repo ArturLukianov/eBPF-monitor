@@ -1,0 +1,19 @@
+name: privileged_container_proc_escape
+description: >
+  A process accessed the host filesystem via /proc/1/root — the classic privileged
+  container escape path. Inside a --privileged container, /proc/1/root is a symlink
+  to host PID 1's root filesystem, giving full read/write access to the host.
+  Any openat() call with a path under /proc/1/root that creates or writes a file is
+  unambiguous: no legitimate workload uses /proc/1/root as a filesystem path.
+  Covers Lab 15: attacker inside privileged container writes /proc/1/root/tmp/pwned.
+  Also detects nsenter usage via exec.
+severity: CRITICAL
+mitre: T1611
+any:
+  - event_type: file_open
+    file_path: "/proc/1/root/*"
+    file_op: write
+  - event_type: exec
+    exec_path: "/usr/bin/nsenter"
+  - event_type: exec
+    exec_path: "/bin/nsenter"

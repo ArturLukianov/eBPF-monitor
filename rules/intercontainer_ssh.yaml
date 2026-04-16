@@ -1,8 +1,0 @@
-name: intercontainer_ssh
-description: >
-  Container is initiating SSH connections.
-  Indicates compromised service pivoting to another host.
-severity: HIGH
-mitre: T1021.001
-match:
-  dst_port: 22
