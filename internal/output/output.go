@@ -11,8 +11,8 @@ import (
 type StructuredOutput struct {
 	Type string `json:"type"` // "event" for events, "alert" for alerts
 
-	Event core.Event `json:"event,omitempty"`
-	Alert core.Alert `json:"alert,omitempty"`
+	Event *core.Event `json:"event,omitempty"`
+	Alert *core.Alert `json:"alert,omitempty"`
 }
 
 func OutputLoop(eventCh <-chan core.Event, alertCh <-chan core.Alert) {
@@ -45,7 +45,7 @@ func OutputLoop(eventCh <-chan core.Event, alertCh <-chan core.Alert) {
 			var out StructuredOutput
 
 			out.Type = "event"
-			out.Event = event
+			out.Event = &event
 
 			eventData, err := json.Marshal(out)
 			if err != nil {
@@ -64,7 +64,7 @@ func OutputLoop(eventCh <-chan core.Event, alertCh <-chan core.Alert) {
 
 			var out StructuredOutput
 			out.Type = "alert"
-			out.Alert = alert
+			out.Alert = &alert
 
 			alertData, err := json.Marshal(out)
 			if err != nil {
