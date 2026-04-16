@@ -1,5 +1,7 @@
 package correlator
 
+// This is needed to correlate network connections with each other
+
 import (
 	"sync"
 	"time"
@@ -71,7 +73,7 @@ func (c *Correlator) Cleanup() {
 
 func (c *Correlator) HandleConnect(srcAddr uint32, srcPort uint16,
 	dstAddr uint32, dstPort uint16,
-	cgroupID uint64, pid uint32, comm [16]byte) {
+	cgroupID uint64, pid uint32, comm [16]byte, timestamp uint64) {
 
 	conn := IncompleteConnection{
 		SrcAddr: srcAddr,
@@ -84,7 +86,7 @@ func (c *Correlator) HandleConnect(srcAddr uint32, srcPort uint16,
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.pending[conn] = &PendingConnectionEntry{
-		Timestamp:      time.Now(),
+		Timestamp:      helpers.KTimeToTime(timestamp),
 		SrcCgroupID:    cgroupID,
 		SrcPID:         pid,
 		SrcProcessName: helpers.NullTermStr(comm[:]),

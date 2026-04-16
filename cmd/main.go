@@ -18,6 +18,7 @@ import (
 	"github.com/ArturLukianov/eBPF-monitor/internal/core"
 	"github.com/ArturLukianov/eBPF-monitor/internal/correlator"
 	bpf "github.com/ArturLukianov/eBPF-monitor/internal/ebpf"
+	"github.com/ArturLukianov/eBPF-monitor/internal/helpers"
 	"github.com/ArturLukianov/eBPF-monitor/internal/output"
 	"github.com/ArturLukianov/eBPF-monitor/internal/resolver"
 	"github.com/ArturLukianov/eBPF-monitor/internal/ruleengine"
@@ -72,7 +73,7 @@ func main() {
 	}
 	defer objs.Close()
 
-	// Attach kprobes
+	// Attach kprobes and tracepoints
 	kpTcpConnect, err := link.Kprobe("tcp_connect", objs.TcpConnect, nil)
 	if err != nil {
 		slog.Error("could not attach kprobe tcp_connect", "error", err.Error())
@@ -87,6 +88,20 @@ func main() {
 	}
 	defer kpInetCskAccept.Close()
 
+	tpOpenat, err := link.Tracepoint("syscalls", "sys_enter_openat", objs.HandleOpenat, nil)
+	if err != nil {
+		slog.Error("could not attach tracepoint sys_enter_openat", "error", err.Error())
+		os.Exit(-1)
+	}
+	defer tpOpenat.Close()
+
+	tpExecve, err := link.Tracepoint("syscalls", "sys_enter_execve", objs.HandleExecve, nil)
+	if err != nil {
+		slog.Error("could not attach tracepoint sys_enter_execve", "error", err.Error())
+		os.Exit(-1)
+	}
+	defer tpExecve.Close()
+
 	// Setup resolver
 	resolver, err := resolver.New()
 	if err != nil {
@@ -99,30 +114,45 @@ func main() {
 	// Setup correlator
 	corr := correlator.New(time.Second * 5)
 
+	// Fan in for events
+	eventsCh := make(chan core.Event, 1024)
+
+	go func() {
+		for event := range corr.Output() {
+			eventsCh <- event
+		}
+	}()
+
 	// Fan out + Filter + Enrich events to output and rule engine
 	outputCh := make(chan core.Event, 1024)
 	engineCh := make(chan core.Event, 1024)
 
 	go func() {
-		for event := range corr.Output() {
+		for event := range eventsCh {
 			srcInfo := resolver.Resolve(event.SrcCgroupID)
-			dstInfo := resolver.Resolve(event.DstCgroupID)
 
 			// If container not found, skip
-			if srcInfo == nil || dstInfo == nil {
+			// Dst container may be empty for exec or file events
+			if srcInfo == nil {
 				continue
+			}
+
+			var dstInfo *core.ContainerInfo
+
+			if event.DstCgroupID != 0 {
+				dstInfo = resolver.Resolve(event.DstCgroupID)
 			}
 
 			// If filter is set, drop not matching connections
 			if filterPrefixArg != "" {
 				if !strings.HasPrefix(srcInfo.Name, filterPrefixArg) &&
-					!strings.HasPrefix(dstInfo.Name, filterPrefixArg) {
+					(dstInfo != nil && !strings.HasPrefix(dstInfo.Name, filterPrefixArg)) {
 					continue
 				}
 			}
 
-			event.SrcContainer = *srcInfo
-			event.DstContainer = *dstInfo
+			event.SrcContainer = srcInfo
+			event.DstContainer = dstInfo
 
 			outputCh <- event
 			engineCh <- event
@@ -154,6 +184,7 @@ func main() {
 		cancel()
 		close(engineCh)
 		close(outputCh)
+		close(eventsCh)
 	}()
 
 	// Read events from ringbuffer
@@ -171,16 +202,39 @@ func main() {
 		}
 
 		switch event.EventType {
-		case bpf.EVENT_CONNECT:
+		case bpf.EVENT_NET_CONNECT:
 			corr.HandleConnect(
 				event.SrcAddr, event.SrcPort,
 				event.DstAddr, event.DstPort,
-				event.CgroupId, event.Pid, event.Comm)
-		case bpf.EVENT_ACCEPT:
+				event.CgroupId, event.Pid, event.Comm, event.Timestamp)
+		case bpf.EVENT_NET_ACCEPT:
 			corr.HandleAccept(
 				event.SrcAddr, event.SrcPort,
 				event.DstAddr, event.DstPort,
 				event.CgroupId, event.Pid, event.Comm)
+		case bpf.EVENT_FILE_OPEN:
+			event := core.Event{
+				EventType:      "file_open",
+				Timestamp:      helpers.KTimeToTime(event.Timestamp),
+				SrcPID:         event.Pid,
+				SrcCgroupID:    event.CgroupId,
+				SrcProcessName: helpers.NullTermStr(event.Comm[:]),
+				FilePath:       helpers.NullTermStr(event.Filepath[:]),
+				FileOp:         helpers.OpenFlagsToOp(event.Flags),
+			}
+			eventsCh <- event
+		case bpf.EVENT_EXEC:
+			event := core.Event{
+				EventType:         "exec",
+				Timestamp:         helpers.KTimeToTime(event.Timestamp),
+				SrcPID:            event.Pid,
+				SrcCgroupID:       event.CgroupId,
+				SrcProcessName:    helpers.NullTermStr(event.Comm[:]),
+				ExecPath:          helpers.NullTermStr(event.Filepath[:]),
+				ParentPID:         event.Ppid,
+				ParentProcessName: helpers.NullTermStr(event.ParentComm[:]),
+			}
+			eventsCh <- event
 		}
 	}
 }

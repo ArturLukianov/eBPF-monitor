@@ -6,13 +6,15 @@
 #include <bpf/bpf_tracing.h>
 
 enum event_type : __u8 {
-    EVENT_CONNECT = 1,
-    EVENT_ACCEPT = 2,
-    EVENT_CLOSE = 3
+    EVENT_NET_CONNECT = 1,
+    EVENT_NET_ACCEPT = 2,
+    EVENT_NET_CLOSE = 3,
+    EVENT_FILE_OPEN = 4,
+    EVENT_EXEC = 5,
 };
 
 // Event passed to ring buffer
-struct event { 
+struct event {
     // Common fields
     __u32 pid;
     __u64 cgroup_id;
@@ -26,6 +28,12 @@ struct event {
     __u16 dst_port;
 
     char comm[16];
+
+    // For file open and exec events
+    char filepath[256];
+    __u32 ppid; // parent pid
+    char parent_comm[16];
+    __u32 flags; // file open flags
 };
 
 // Ring buffer map
@@ -61,7 +69,7 @@ int BPF_KPROBE(tcp_connect, struct sock *sk) {
     if (!event) return 0; // TODO: Handle error
 
     // Fill common fields
-    fill_common_fields(event, EVENT_CONNECT);
+    fill_common_fields(event, EVENT_NET_CONNECT);
 
     // SRC -[tcp_connect]-> DST
     event->src_addr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
@@ -88,13 +96,63 @@ int BPF_KRETPROBE(inet_csk_accept, struct sock *sk) {
     event = bpf_ringbuf_reserve(&events, sizeof(struct event), 0);
     if (!event) return 0; // TODO: Handle error
 
-    fill_common_fields(event, EVENT_ACCEPT);
+    fill_common_fields(event, EVENT_NET_ACCEPT);
 
     // DST -[inet_csk_accept]-> SRC
     event->src_addr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
     event->dst_addr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
     event->src_port = BPF_CORE_READ(sk, __sk_common.skc_num);
     event->dst_port = bpf_htons(BPF_CORE_READ(sk, __sk_common.skc_dport));
+
+    bpf_ringbuf_submit(event, 0);
+    return 0;
+}
+
+// Open file syscall
+SEC("tracepoint/syscalls/sys_enter_openat")
+int handle_openat(struct trace_event_raw_sys_enter *ctx) {
+    struct event *event;
+
+    __u64 cgroup_id = bpf_get_current_cgroup_id();
+    // Filter host processes
+    if (cgroup_id == 0) return 0;
+
+    event = bpf_ringbuf_reserve(&events, sizeof(struct event), 0);
+    if (!event) return 0; // TODO: Handle error
+
+    fill_common_fields(event, EVENT_FILE_OPEN);
+
+    const char* pathname = (const char*)ctx->args[1];
+    bpf_probe_read_user_str(&event->filepath, sizeof(event->filepath), pathname);
+
+    event->flags = ctx->args[2];
+
+    bpf_ringbuf_submit(event, 0);
+    return 0;
+}
+
+// Exec syscall
+SEC("tracepoint/syscalls/sys_enter_execve")
+int handle_execve(struct trace_event_raw_sys_enter *ctx) {
+    struct event *event;
+
+    __u64 cgroup_id = bpf_get_current_cgroup_id();
+    // Filter host processes
+    if (cgroup_id == 0) return 0;
+
+    event = bpf_ringbuf_reserve(&events, sizeof(struct event), 0);
+    if (!event) return 0; // TODO: Handle error
+
+    fill_common_fields(event, EVENT_EXEC);
+
+    const char* pathname = (const char*)ctx->args[0];
+    bpf_probe_read_kernel_str(&event->filepath, sizeof(event->filepath), pathname);
+
+    // Parent info
+    struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+    struct task_struct *parent = BPF_CORE_READ(task, real_parent);
+    event->ppid = BPF_CORE_READ(parent, pid);
+    bpf_probe_read_kernel_str(&event->parent_comm, sizeof(event->parent_comm), BPF_CORE_READ(parent, comm));
 
     bpf_ringbuf_submit(event, 0);
     return 0;

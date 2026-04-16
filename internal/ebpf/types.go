@@ -26,11 +26,21 @@ import (
 
 // 	__u32                      dst_addr;             /*    36     4 */
 // 	__u16                      dst_port;             /*    40     2 */
+// 	char                       comm[16];             /*    42    16 */
+// 	char                       filepath[256];        /*    58   256 */
 
-// 	/* size: 48, cachelines: 1, members: 8 */
-// 	/* sum members: 33, holes: 3, sum holes: 9 */
-// 	/* padding: 6 */
-// 	/* last cacheline: 48 bytes */
+// 	/* XXX 2 bytes hole, try to pack */
+
+// 	/* --- cacheline 4 boundary (256 bytes) was 60 bytes ago --- */
+// 	__u32                      ppid;                 /*   316     4 */
+// 	/* --- cacheline 5 boundary (320 bytes) --- */
+// 	char                       parent_comm[16];      /*   320    16 */
+// 	__u32                      flags;                /*   336     4 */
+
+// 	/* size: 344, cachelines: 6, members: 13 */
+// 	/* sum members: 329, holes: 4, sum holes: 11 */
+// 	/* padding: 4 */
+// 	/* last cacheline: 24 bytes */
 // };
 
 type MonitorEvent struct {
@@ -48,13 +58,21 @@ type MonitorEvent struct {
 	DstPort uint16
 
 	Comm [16]byte
+
+	Filepath   [256]byte
+	Pad4       [2]byte
+	Ppid       uint32
+	ParentComm [16]byte
+	Flags      uint32
 }
 
 // Event types
 const (
-	EVENT_CONNECT = 1
-	EVENT_ACCEPT  = 2
-	EVENT_CLOSE   = 3
+	EVENT_NET_CONNECT = 1
+	EVENT_NET_ACCEPT  = 2
+	EVENT_NET_CLOSE   = 3
+	EVENT_FILE_OPEN   = 4
+	EVENT_EXEC        = 5
 )
 
 func ParseEvent(data []byte) *MonitorEvent {

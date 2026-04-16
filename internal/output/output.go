@@ -24,22 +24,6 @@ func OutputLoop(eventCh <-chan core.Event, alertCh <-chan core.Alert) {
 				continue
 			}
 
-			slog.Debug("New event", "event", "connection",
-				"srcContainer", event.SrcContainer.Name,
-				"srcPID", event.SrcPID,
-				"srcProcessName", event.SrcProcessName,
-				"srcCgroupID", event.SrcCgroupID,
-				"srcAddr", event.SrcAddr,
-				"srcPort", event.SrcPort,
-
-				"dstContainer", event.DstContainer.Name,
-				"dstPID", event.DstPID,
-				"dstProcessName", event.DstProcessName,
-				"dstCgroupID", event.DstCgroupID,
-				"dstAddr", event.DstAddr,
-				"dstPort", event.DstPort,
-			)
-
 			// Output event
 
 			var out StructuredOutput

@@ -95,7 +95,11 @@ func buildGroupKey(ruleName string, groupBy []string, event core.Event) string {
 		case "src_container":
 			keys = append(keys, event.SrcContainer.Name)
 		case "dst_container":
-			keys = append(keys, event.DstContainer.Name)
+			if event.DstContainer == nil {
+				keys = append(keys, "")
+			} else {
+				keys = append(keys, event.DstContainer.Name)
+			}
 		case "src_addr":
 			keys = append(keys, event.SrcAddr)
 		case "dst_addr":
@@ -140,14 +144,13 @@ func (r *RuleEngine) handleThreshold(rule Rule, event core.Event) {
 			RuleName:     rule.Name,
 			Severity:     rule.Severity,
 			Description:  rule.Description,
-			SrcContainer: &event.SrcContainer,
-			DstContainer: &event.DstContainer,
+			SrcContainer: event.SrcContainer,
+			DstContainer: event.DstContainer,
 		})
 	}
 }
 
 func (r *RuleEngine) ProcessEvent(event core.Event) {
-	slog.Debug("Processing event")
 	for _, rule := range r.rules {
 		if !rule.MatchEvent(event) {
 			continue
@@ -164,8 +167,8 @@ func (r *RuleEngine) ProcessEvent(event core.Event) {
 				Severity:    rule.Severity,
 				Description: rule.Description,
 
-				SrcContainer: &event.SrcContainer,
-				DstContainer: &event.DstContainer,
+				SrcContainer: event.SrcContainer,
+				DstContainer: event.DstContainer,
 			})
 		}
 	}
@@ -173,7 +176,6 @@ func (r *RuleEngine) ProcessEvent(event core.Event) {
 
 func (r *RuleEngine) ProcessLoop(eventsCh <-chan core.Event) {
 	for event := range eventsCh {
-		slog.Debug("Receieved event")
 		r.ProcessEvent(event)
 	}
 }
