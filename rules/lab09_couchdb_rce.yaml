@@ -1,23 +1,28 @@
 name: couchdb_shell_execution
 description: >
-  The CouchDB Erlang runtime (beam.smp) executed a shell binary.
-  The Erlang VM has no legitimate reason to spawn an OS shell.
-  This is the eBPF fingerprint of the CouchDB os_daemons RCE technique:
-  the attacker registers a shell command as a CouchDB OS daemon via the
-  _config API ("PUT /_node/nonode@nohost/_config/os_daemons/..."),
-  causing beam.smp to execve the command directly. An equivalent signal
-  appears with the query_server technique where a design document view
-  triggers child_process.execSync() inside the Erlang-hosted JS runtime.
-  Covers Lab 09.
+  CouchDB Erlang VM spawned an OS shell via its child process helper.
+  The actual exec chain is: beam.smp → erl_child_setup → sh → execve(/bin/sh).
+  The parent_process for the final shell exec is "erl_child_setup", not "beam.smp",
+  because Erlang uses erl_child_setup as a POSIX process spawn helper.
+  Detecting parent_process=erl_child_setup is the correct signal: any exec from
+  an Erlang child setup process is anomalous — the CouchDB Erlang VM has no
+  legitimate reason to spawn OS shells through this path.
+  Covers Lab 09 (query_server / os_daemons RCE via CouchDB config API).
 severity: CRITICAL
 mitre: T1059
 any:
+  - event_type: exec
+    parent_process: erl_child_setup
+    exec_path: "/bin/sh"
+  - event_type: exec
+    parent_process: erl_child_setup
+    exec_path: "/bin/bash"
+  - event_type: exec
+    parent_process: erl_child_setup
+    exec_path: "/usr/bin/bash"
   - event_type: exec
     src_process: "beam.smp"
     exec_path: "/bin/sh"
   - event_type: exec
     src_process: "beam.smp"
     exec_path: "/bin/bash"
-  - event_type: exec
-    src_process: "beam.smp"
-    exec_path: "/usr/bin/bash"

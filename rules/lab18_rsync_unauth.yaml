@@ -5,10 +5,18 @@ description: >
   If the module root is or contains ~/.ssh/, the attacker can inject their public key
   and gain passwordless SSH access.
   The write appears as: src_process=rsync writing to the configured SSH directory path.
+  NOTE: rsync actually writes a temp file (e.g. .authorized_keys.H8gpGF) and then
+  renames it to authorized_keys via renameat. The BPF openat hook never sees the
+  final authorized_keys path. The reliable signal is the rsync client connecting
+  to port 873 (rsync daemon port). The direct file-write patterns are kept as a
+  fallback for configurations that bypass the temp-file-rename path.
   Covers Lab 18: attacker pushes public key to rsync://victim/rootssh/authorized_keys.
 severity: CRITICAL
 mitre: T1098.004
 any:
+  - event_type: connection
+    src_process: rsync
+    dst_port: 873
   - event_type: file_open
     src_process: rsync
     file_path: "/root/.ssh/authorized_keys"

@@ -5,12 +5,13 @@ description: >
   mongosh is only used for administrative access. An inter-container
   mongosh connection suggests direct manual enumeration of the database,
   which in a no-auth deployment gives full read/write access to all collections.
-  In Lab 08, the attacker extracts Redis credentials stored in a MongoDB
-  collection, then pivots to victim2. Note: network-level detection only —
-  data volume or query content cannot be inspected at this layer.
+  In Lab 08, the attacker extracts credentials stored in MongoDB collections,
+  then pivots to victim2. Note: the kernel comm for mongosh is "mongosh mongodb"
+  (15 chars including the space) so the glob "mongosh*" is required.
+  Network-level detection only — data volume or query content not inspectable.
 severity: HIGH
 mitre: T1213
 match:
   event_type: connection
-  src_process: mongosh
+  src_process: "mongosh*"
   dst_port: 27017

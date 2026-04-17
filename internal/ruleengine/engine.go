@@ -18,6 +18,7 @@ type RuleEngine struct {
 	rules      []Rule
 	alerts     chan core.Alert
 	thresholds map[string]*thresholdWindow
+	sequences  sequenceState
 
 	mu sync.Mutex
 }
@@ -152,6 +153,10 @@ func (r *RuleEngine) handleThreshold(rule Rule, event core.Event) {
 
 func (r *RuleEngine) ProcessEvent(event core.Event) {
 	for _, rule := range r.rules {
+		if rule.Sequence != nil {
+			r.handleSequence(rule, event)
+			continue
+		}
 		if !rule.MatchEvent(event) {
 			continue
 		}

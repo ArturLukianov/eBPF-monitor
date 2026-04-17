@@ -1,15 +1,19 @@
 name: redis_authorized_keys_write
 description: >
-  The Redis server process opened an SSH authorized_keys file for writing.
-  Redis has no legitimate reason to write to any SSH directory.
-  This is the direct eBPF fingerprint of the Redis CONFIG SET attack:
-  the attacker sets "CONFIG SET dir /root/.ssh" and
-  "CONFIG SET dbfilename authorized_keys", then triggers BGSAVE — causing
-  redis-server itself to create/overwrite authorized_keys with the attacker's
-  public key embedded in the RDB dump. Covers Lab 05.
+  Detection of the Redis CONFIG SET / BGSAVE authorized_keys injection attack.
+  Redis writes its RDB dump via a temp file (temp-N.rdb) then renames it — so the
+  direct authorized_keys write is never visible via openat. The reliable signal is
+  redis-cli (the CLI tool, not the server) connecting to port 6379 from a container
+  that is not the Redis server itself: this is the attacker issuing CONFIG SET commands.
+  The secondary signal (direct authorized_keys write) is kept for edge cases where a
+  different Redis client triggers a direct file write without the temp-file pattern.
+  Covers Lab 05.
 severity: CRITICAL
 mitre: T1098.004
 any:
+  - event_type: connection
+    src_process: redis-cli
+    dst_port: 6379
   - event_type: file_open
     src_process: "redis-server"
     file_path: "/root/.ssh/authorized_keys"

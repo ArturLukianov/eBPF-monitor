@@ -13,6 +13,12 @@ any:
   - event_type: file_open
     file_path: "/proc/1/root/*"
     file_op: write
+  - event_type: file_open
+    file_path: "/proc/1/root/*/*"
+    file_op: write
+  - event_type: file_open
+    file_path: "/proc/1/root/*/*/*"
+    file_op: write
   - event_type: exec
     exec_path: "/usr/bin/nsenter"
   - event_type: exec

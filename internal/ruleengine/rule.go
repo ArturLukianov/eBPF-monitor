@@ -41,6 +41,8 @@ type Rule struct {
 	Any         []MatchBlock // OR logic
 	All         []MatchBlock // AND logic
 	Detect      DetectConfig
+
+	Sequence *SequenceConfig `yaml:"sequence"`
 }
 
 func matchPattern(pattern, value string) bool {

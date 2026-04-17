@@ -5,10 +5,20 @@ description: >
   passwords). Without client certificate authentication, any process with network access
   can dump every key via a simple GET request.
   Connection to port 2379 from an etcdctl client or any non-etcd process is anomalous.
+  NOTE: TCP connection events to port 2379 may not be captured in all environments
+  (no connection events observed in lab tests). The reliable signal is the exec of
+  the etcdctl binary itself — etcdctl is not part of any normal container workload
+  and its execution is always an administrative or attacker action.
   Covers Lab 27: attacker uses etcdctl to dump all /registry/secrets/ keys from etcd,
   extracts a cluster-admin JWT, and uses it against the Kubernetes API.
 severity: CRITICAL
 mitre: T1552.007
-match:
-  event_type: connection
-  dst_port: 2379
+any:
+  - event_type: exec
+    exec_path: "/usr/local/bin/etcdctl"
+  - event_type: exec
+    exec_path: "/usr/bin/etcdctl"
+  - event_type: exec
+    exec_path: "/bin/etcdctl"
+  - event_type: connection
+    dst_port: 2379

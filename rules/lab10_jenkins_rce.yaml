@@ -6,6 +6,9 @@ description: >
   This is the eBPF fingerprint of Groovy/JSP Runtime.exec() RCE:
   Groovy's ["bash", "-c", "cmd"].execute() and JSP's Runtime.getRuntime().exec()
   both result in the JVM process (comm="java") calling fork()+execve("/bin/bash").
+  In JDK 17+, the JVM uses jspawnhelper as an intermediary process for fork/exec:
+  the exec chain is java-thread → jspawnhelper → /bin/bash. The src_process for
+  the final exec is "jspawnhelper", not "java". Both patterns are required.
   Covers Lab 10 (Jenkins /scriptText unauthenticated Groovy execution) and
   Lab 12 (Tomcat Manager WAR → JSP shell), since both run as java.
 severity: CRITICAL
@@ -19,4 +22,13 @@ any:
     exec_path: "/bin/sh"
   - event_type: exec
     src_process: java
+    exec_path: "/usr/bin/bash"
+  - event_type: exec
+    src_process: jspawnhelper
+    exec_path: "/bin/bash"
+  - event_type: exec
+    src_process: jspawnhelper
+    exec_path: "/bin/sh"
+  - event_type: exec
+    src_process: jspawnhelper
     exec_path: "/usr/bin/bash"
